@@ -517,6 +517,111 @@ class NumberSumsGame:
 
         return True
 
+    def undo(self) -> bool:
+        """Undoes the last removal, restoration, mark, or unmark"""
+
+        if not self._history:
+            return False
+
+        move       = self._history.pop()
+        coordinate = (
+            move.cell.row   ,
+            move.cell.column,
+        )
+
+        if move.action in ("remove", "mark"):
+            self._decisions.pop(coordinate)
+        else:
+            items    = list(self._decisions.items())
+            position = move.removed_position
+
+            if position is None:
+                position = len(items)
+
+            decision : DecisionValue = 0 if move.action == "restore" else 1
+
+            items.insert(
+                position,
+                (
+                    coordinate,
+                    decision  ,
+                )
+            )
+
+            self._decisions.clear ()
+            self._decisions.update(items)
+
+        return True
+
+    def reset(self) -> None:
+        """Restores the entire board and clears the history"""
+
+        self._decisions.clear()
+        self._history  .clear()
+
+    def current_row_sums(self) -> tuple[int, ...]:
+        """Calculates the current sums of the rows"""
+
+        return tuple(
+            sum(
+                self._board[row][column]
+                for column in range(self.size)
+                if  self._decisions.get((row, column)) != 0
+            )
+            for row in range(self.size)
+        )
+
+    def current_column_sums(self) -> tuple[int, ...]:
+        """Calculates the current sums of the columns"""
+
+        return tuple(
+            sum(
+                self._board[row][column]
+                for row in range(self.size)
+                if  self._decisions.get((row, column)) != 0
+            )
+            for column in range(self.size)
+        )
+
+    def marked_row_sums(self) -> tuple[int, ...]:
+        """
+        Calculates the sums of only the marked cells in each row.
+
+        Different from :meth:`current_row_sums`, this accumulated starts at
+        zero and only increases when the player marks a cell as KEEP.
+        """
+
+        return tuple(
+            sum(
+                self._board[row][column]
+                for column in range(self.size)
+                if  self._decisions.get((row, column)) == 1
+            )
+            for row in range(self.size)
+        )
+
+    def marked_column_sums(self) -> tuple[int, ...]:
+        """Calculates the sums of only the marked cells in each column"""
+
+        return tuple(
+            sum(
+                self._board[row][column]
+                for row in range(self.size)
+                if  self._decisions.get((row, column)) == 1
+            )
+            for column in range(self.size)
+        )
+
+    def reserved_row_sums(self) -> tuple[int, ...]:
+        """Semantic alias of :meth:`marked_row_sums` for the interface"""
+
+        return self.marked_row_sums()
+
+    def reserved_column_sums(self) -> tuple[int, ...]:
+        """Semantic alias of :meth:`marked_column_sums` for the interface"""
+
+        return self.marked_column_sums()
+
     def _ensure_consistent_decision(
         self,
         coordinate : Coordinate   ,
