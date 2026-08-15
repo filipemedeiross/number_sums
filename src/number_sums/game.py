@@ -148,3 +148,148 @@ class NumberSumsGame:
 
         self._decisions : dict[Coordinate, DecisionValue] = {}
         self._history   : list[Move                     ] = []
+
+    @classmethod
+    def random(
+        cls,
+        *  ,
+
+        size : int                                          = DEFAULT_SIZE,
+        seed : int | float | str | bytes | bytearray | None = None        ,
+        min_value : int = 1,
+        max_value : int = 9,
+
+        keep_probability : float = 0.5  ,
+        unique_solution  : bool  = True ,
+        max_attempts     : int   = 1_000,
+    ) -> NumberSumsGame:
+        """
+        Creates a random board that has at least one solution.
+
+        The targets are calculated from a random mask of kept cells.
+        By default, the generator also uses the solver to reject boards
+        with more than one solution.
+
+        ``seed`` allows reproducing exactly one generation. ``size`` is 8
+        by default, as in the format requested for the game.
+        """
+
+        if not cls._is_int(size) or not 2 <= size <= cls.MAX_SIZE:
+            raise ValueError(f"Size must be an integer between 2 and {cls.MAX_SIZE}.")
+
+        if not cls._is_int(min_value) or not cls._is_int(max_value):
+            raise ValueError("Min_value and max_value must be integers.")
+        if min_value <= 0 or max_value < min_value:
+            raise ValueError("Use 0 < min_value <= max_value.")
+
+        if isinstance(keep_probability, bool) or not isinstance(keep_probability, (int, float)):
+            raise ValueError("Keep_probability must be a number between 0 and 1.")
+        if not 0 < keep_probability < 1:
+            raise ValueError("Keep_probability must be strictly between 0 and 1.")
+
+        if not isinstance(unique_solution, bool):
+            raise ValueError("Unique_solution must be a boolean.")
+        if not cls._is_int(max_attempts) or max_attempts <= 0:
+            raise ValueError("Max_attempts must be a positive integer.")
+
+        random = Random(seed)
+
+        for _ in range(max_attempts):
+            board = tuple(
+                tuple(
+                    random.randint(min_value, max_value)
+                    for _ in range(size)
+                )
+                for _ in range(size)
+            )
+            kept  = cls._random_keep_mask(
+                random, size, keep_probability
+            )
+
+            row_targets = tuple(
+                sum(
+                    board[row][column]
+                    for column in range(size)
+                    if  kept[row][column]
+                )
+                for row in range(size)
+            )
+            column_targets = tuple(
+                sum(
+                    board[row][column]
+                    for row in range(size)
+                    if  kept[row][column]
+                )
+                for column in range(size)
+            )
+
+            game = cls(board, row_targets, column_targets)
+
+            if not unique_solution or len(game.find_solutions(limit=2)) == 1:
+                game._known_solvable = True
+
+                return game
+
+        raise RuntimeError(
+            f"Could not generate a valid board in {max_attempts} attempts. "
+             "Increase max_attempts or disable unique_solution."
+        )
+
+    @staticmethod
+    def _random_keep_mask(
+        random      : Random,
+        size        : int   ,
+        probability : float ,
+    ) -> tuple[tuple[bool, ...], ...]:
+        """Generates a non-trivial mask for every row and column"""
+
+        for _ in range(10_000):
+            mask = tuple(
+                tuple(
+                    random.random() < probability
+                    for _ in range(size)
+                )
+                for _ in range(size)
+            )
+
+            rows_are_mixed    = all(any(row) and not all(row) for row in mask)
+            columns_are_mixed = all(
+                any(mask[row][column] for row in range(size)) and not
+                all(mask[row][column] for row in range(size))
+                for column in range(size)
+            )
+
+            if rows_are_mixed and columns_are_mixed:
+                return mask
+
+        raise RuntimeError("Could not generate a non-trivial mask.")
+
+    @staticmethod
+    def _is_int(value: object) -> bool:
+        return isinstance(value, int) and not isinstance(value, bool)
+
+    @property
+    def size(self) -> int:
+        """Number of rows and columns in the board"""
+
+        return len(self._board)
+
+    @property
+    def board(self) -> tuple[tuple[int, ...], ...]:
+        """Original board, without hiding removed cells."""
+
+        return self._board
+
+    @property
+    def row_targets(self) -> tuple[int, ...]:
+        return self._row_targets
+
+    @property
+    def column_targets(self) -> tuple[int, ...]:
+        return self._column_targets
+
+    @property
+    def known_solvable(self) -> bool:
+        """Indicates that the board has passed the solvability check"""
+
+        return self._known_solvable
