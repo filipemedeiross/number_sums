@@ -1,0 +1,5 @@
+from number_sums.pygame_app import main
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
