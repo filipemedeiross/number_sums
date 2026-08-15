@@ -293,3 +293,64 @@ class NumberSumsGame:
         """Indicates that the board has passed the solvability check"""
 
         return self._known_solvable
+
+    @property
+    def visible_board(self) -> tuple[tuple[int | None, ...], ...]:
+        """Visible board; removed cells are represented by ``None``"""
+
+        return tuple(
+            tuple(
+                None
+                if   self._decisions.get((row, column)) == 0
+                else self._board[row][column]
+                for column in range(self.size)
+            )
+            for row in range(self.size)
+        )
+
+    @property
+    def removed_cells(self) -> tuple[Cell, ...]:
+        """Removed cells, in the order they were removed"""
+
+        return tuple(
+            Cell(
+                row   ,
+                column,
+                self._board[row][column],
+            )
+            for (row, column), decision in self._decisions.items()
+            if  decision == 0
+        )
+
+    @property
+    def marked_cells(self) -> tuple[Cell, ...]:
+        """Marked cells, in the order they were marked"""
+
+        return tuple(
+            Cell(
+                row   ,
+                column,
+                self._board[row][column],
+            )
+            for (row, column), decision in self._decisions.items()
+            if  decision == 1
+        )
+
+    @property
+    def decisions(self) -> tuple[tuple[Coordinate, DecisionValue], ...]:
+        """Active decisions in the order they were made by the player"""
+
+        return tuple(self._decisions.items())
+
+    @property
+    def history(self) -> tuple[Move, ...]:
+        """Immutable history of changes made since the last reset"""
+
+        return tuple(self._history)
+
+    def _validate_coordinate(self, row: object, column: object) -> None:
+        if not self._is_int(row) or not self._is_int(column):
+            raise TypeError("Row and column must be integers.")
+
+        if not 0 <= row < self.size or not 0 <= column < self.size:
+            raise IndexError(f"Coordinates must be between 0 and {self.size - 1}.")
