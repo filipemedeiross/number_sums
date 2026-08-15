@@ -708,6 +708,81 @@ class NumberSumsGame:
 
         return selected
 
+    def render(self) -> str:
+        """Formats the board, its targets and current sums for the terminal"""
+
+        row_sums    = self.current_row_sums   ()
+        column_sums = self.current_column_sums()
+
+        cell_width = max(
+            2,
+
+              len(str(self.size)),
+            *(len(str(value    )) for row in self._board for value in row),
+
+            *(
+                len(str(self._display_value(row, column)))
+                for row    in range(self.size)
+                for column in range(self.size)
+            ),
+
+            *(len(str(value)) for value in self._column_targets),
+            *(len(str(value)) for value in column_sums         ),
+        )
+        sum_width = max(
+            4,
+
+            *(len(str(value)) for value in self._row_targets),
+            *(len(str(value)) for value in row_sums         ),
+        )
+        label_width = max(2, len(str(self.size)))
+
+        indent = " " * (label_width + 3)
+        header = indent + " ".join(
+            f"{column + 1:>{cell_width}}"
+            for column in range(self.size)
+        )
+
+        separator = " " * (label_width + 1) + "+" + "-" * ((cell_width + 1) * self.size + 1) + "+"
+
+        lines = [
+            header + "   meta (atual)",
+            separator                 ,
+        ]
+        for row in range(self.size):
+            cells = " ".join(
+                f"{self._display_value(row, column):>{cell_width}}"
+                for column in range(self.size)
+            )
+
+            lines.append(
+                f"{row + 1:>{label_width}} | {cells} | "
+                f"{self._row_targets[row]:>{sum_width}} ({row_sums[row]:>{sum_width}})"
+            )
+
+        lines.append(separator)
+
+        targets = " ".join(f"{target:>{cell_width}}" for target in self._column_targets)
+        current = " ".join(f"{total:>{cell_width }}" for total  in column_sums         )
+
+        lines.append(f"{indent}{targets}   metas" )
+        lines.append(f"{indent}{current}   atuais")
+
+        return "\n".join(lines)
+
+    def __str__(self) -> str:
+        return self.render()
+
+    def _display_value(self, row: int, column: int) -> int | str:
+        coordinate = (row, column)
+
+        if self._decisions.get(coordinate) == 0:
+            return "·"
+        if self._decisions.get(coordinate) == 1:
+            return f"{self._board[row][column]}*"
+
+        return self._board[row][column]
+
     def _coordinates_win(self, removed: frozenset[Coordinate]) -> bool:
         row_sums = tuple(
             sum(
