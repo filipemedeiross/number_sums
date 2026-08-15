@@ -622,6 +622,112 @@ class NumberSumsGame:
 
         return self.marked_column_sums()
 
+    def is_won(self) -> bool:
+        """
+        Returns whether all row and column targets have been met.
+
+        This is the victory formula encapsulated by the model: the sum of the unremoved
+        cells must be equal to the corresponding target in each row and in each column.
+        """
+
+        return (
+            self.current_row_sums   () == self._row_targets    and
+            self.current_column_sums() == self._column_targets
+        )
+
+    def find_solutions(self, limit: int | None = None) -> list[frozenset[Coordinate]]:
+        """
+        Finds solutions via CSP and returns the cells to remove.
+
+        The solver uses generalized arc consistency over the sums,
+        followed by backtracking with the MRV and LCV heuristics.
+        The current state of the game is not altered.
+        """
+
+        solutions = NumberSumsCSPSolver.from_game(self).find_solutions(limit)
+
+        if solutions:
+            self._known_solvable = True
+        else:
+            self._known_solvable = False
+
+        return solutions
+
+    def next_hint(self) -> Hint | None:
+        """Suggests the next move using the current state in the CSP solver"""
+
+        return NumberSumsCSPSolver.from_game(self).next_hint()
+
+    def solve(self, *, apply: bool = False) -> frozenset[Coordinate]:
+        """Finds a solution, optionally applying it to the current board"""
+
+        solutions = self.find_solutions(limit=1)
+
+        if not solutions:
+            raise NoSolutionError("The board has no solution.")
+
+        solution = solutions[0]
+        if apply:
+            self.apply_solution(solution)
+
+        return solution
+
+    def apply_solution(
+        self,
+        solution : Iterable[Coordinate] | None = None,
+    ) -> frozenset[Coordinate]:
+        """
+        Restores the board and removes all cells from a solution.
+
+        When ``solution`` is not provided, a solution is calculated by the object itself.
+        An external solution is only applied if its coordinates really satisfy all the targets.
+        """
+
+        if solution is None:
+            selected = self.solve()
+        else:
+            try:
+                selected = frozenset(solution)
+            except TypeError as error:
+                raise ValueError("Solution must be an iterable of coordinates.") from error
+
+            for coordinate in selected:
+                if not isinstance(coordinate, tuple) or len(coordinate) != 2:
+                    raise ValueError("Each item in the solution must be a tuple (row, column).")
+
+                self._validate_coordinate(*coordinate)
+
+            if not self._coordinates_win(selected):
+                raise ValueError("The provided coordinates do not form a valid solution.")
+
+        self.reset()
+        for row, column in sorted(selected):
+            self.remove_cell(row, column)
+
+        self._known_solvable = True
+
+        return selected
+
+    def _coordinates_win(self, removed: frozenset[Coordinate]) -> bool:
+        row_sums = tuple(
+            sum(
+                self._board[row][column]
+                for column in range(self.size)
+                if (row, column) not in removed
+            )
+            for row in range(self.size)
+        )
+        column_sums = tuple(
+            sum(
+                self._board[row][column]
+                for row in range(self.size)
+                if (row, column) not in removed
+            )
+            for column in range(self.size)
+        )
+
+        return row_sums == self._row_targets and column_sums == self._column_targets
+
     def _ensure_consistent_decision(
         self,
         coordinate : Coordinate   ,
