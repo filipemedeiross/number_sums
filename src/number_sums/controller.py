@@ -124,3 +124,72 @@ class NumberSumsController:
             self.csp_step_count += 1
 
         return changed
+
+    def undo(self) -> bool:
+        """Undoes the last change made to the board"""
+
+        changed   = self.game.undo()
+        self.hint = None
+
+        if changed:
+            self.move_count = max(0, self.move_count - 1)
+
+        return changed
+
+    def reset(self) -> None:
+        """Resets the current board"""
+
+        self.game.reset()
+
+        self.selected = (0, 0)
+        self.hint     = None
+
+        self.move_count           = 0
+        self.forbidden_move_count = 0
+        self.csp_step_count       = 0
+
+    def new_game(self) -> NumberSumsGame:
+        """Replaces the current game with a new board produced by the factory"""
+
+        self.game = self._create_game()
+
+        self.selected = (0, 0)
+        self.hint     = None
+
+        self.move_count           = 0
+        self.forbidden_move_count = 0
+        self.csp_step_count       = 0
+
+        return self.game
+
+    @property
+    def won(self) -> bool:
+        return self.game.is_won()
+
+    @property
+    def prohibited_move_count(self) -> int:
+        return self.forbidden_move_count
+
+    def _create_game(self) -> NumberSumsGame:
+        game = self._game_factory()
+
+        if not isinstance(game, NumberSumsGame):
+            raise TypeError("Game_factory must return a NumberSumsGame.")
+
+        return game
+
+    def _forbid(self) -> bool:
+        """Records an invalid attempt without changing the game state"""
+
+        self.forbidden_move_count += 1
+
+        return False
+
+    def _validate_coordinate(self, row: int, column: int) -> None:
+        if not isinstance(row   , int) or isinstance(row   , bool):
+            raise TypeError("Row and column must be integers.")
+        if not isinstance(column, int) or isinstance(column, bool):
+            raise TypeError("Row and column must be integers.")
+
+        if not 0 <= row < self.game.size or not 0 <= column < self.game.size:
+            raise IndexError("The selected cell is outside the grid.")
