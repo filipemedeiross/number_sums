@@ -362,6 +362,161 @@ class NumberSumsGame:
 
         return self._decisions.get((row, column)) == 1
 
+    def remove_cell(self, row: int, column: int) -> bool:
+        """
+        Removes a cell and saves its position and value.
+
+        Returns ``True`` when the state changed or ``False`` if the cell was
+        already removed. An incompatible removal raises
+        :class:`InvalidMoveError` without changing the game.
+        """
+
+        self._validate_coordinate(row, column)
+
+        coordinate = (row, column)
+        decision   = self._decisions.get(coordinate)
+
+        if decision == 0:
+            return False
+        if decision == 1:
+            raise InvalidMoveError(
+                "remove"  ,
+                coordinate,
+                "The cell is marked; unmark it before removing it",
+            )
+
+        self._ensure_consistent_decision(coordinate, 0)
+
+        value = self._board[row][column]
+
+        self._decisions[coordinate] = 0
+        self._history.append(
+            Move(
+                "remove",
+                Cell(row, column, value)
+            )
+        )
+
+        return True
+
+    def restore_cell(self, row: int, column: int) -> bool:
+        """Restores a previously removed cell"""
+
+        self._validate_coordinate(row, column)
+
+        coordinate = (row, column)
+        if self._decisions.get(coordinate) != 0:
+            return False
+
+        removed_position = tuple(self._decisions).index(coordinate)
+        value            = self._board[row][column]
+
+        self._decisions.pop   (coordinate)
+        self._history  .append(
+            Move(
+                "restore"               ,
+                Cell(row, column, value),
+                removed_position        ,
+            )
+        )
+
+        return True
+
+    def mark_cell(self, row: int, column: int) -> bool:
+        """
+        Marks a visible cell as confirmed to remain.
+
+        An incompatible mark raises :class:`InvalidMoveError`
+        without changing the game.
+        """
+
+        self._validate_coordinate(row, column)
+
+        coordinate = (row, column)
+        decision   = self._decisions.get(coordinate)
+
+        if decision == 1:
+            return False
+        if decision == 0:
+            raise InvalidMoveError(
+                "mark"    ,
+                coordinate,
+                "The cell is removed; restore it before marking it",
+            )
+
+        self._ensure_consistent_decision(coordinate, 1)
+
+        value = self._board[row][column]
+
+        self._decisions[coordinate] = 1
+        self._history.append(
+            Move(
+                "mark",
+                Cell(row, column, value)
+            )
+        )
+
+        return True
+
+    def unmark_cell(self, row: int, column: int) -> bool:
+        """Removes a confirmation that a cell should remain"""
+
+        self._validate_coordinate(row, column)
+
+        coordinate = (row, column)
+        if self._decisions.get(coordinate) != 1:
+            return False
+
+        position = tuple(self._decisions).index(coordinate)
+        value    = self._board[row][column]
+
+        self._decisions.pop   (coordinate)
+        self._history  .append(
+            Move(
+                "unmark"                ,
+                Cell(row, column, value),
+                position                ,
+            )
+        )
+
+        return True
+
+    def toggle_mark(self, row: int, column: int) -> bool:
+        """Toggles the mark of a cell; returns the final state of the mark"""
+
+        if self.is_marked(row, column):
+            self.unmark_cell(row, column)
+
+            return False
+
+        self.mark_cell(row, column)
+
+        return True
+
+    def toggle_cell(self, row: int, column: int) -> bool:
+        """
+        Toggles a cell between removed and visible.
+
+        Returns ``True`` when the cell ends up removed
+        and ``False`` when it ends up visible.
+        """
+
+        if self.is_removed(row, column):
+            self.restore_cell(row, column)
+
+            return False
+
+        if self.is_marked(row, column):
+            raise InvalidMoveError(
+                "remove"     ,
+                (row, column),
+                "The cell is marked; unmark it before removing it",
+            )
+
+        self.remove_cell(row, column)
+
+        return True
+
     def _ensure_consistent_decision(
         self,
         coordinate : Coordinate   ,
