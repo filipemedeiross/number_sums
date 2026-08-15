@@ -81,3 +81,46 @@ class NumberSumsController:
         self.hint        = None
 
         return True
+
+    def request_hint(self) -> Hint | None:
+        """Calculates and returns a single next move without applying it"""
+
+        if self.game.is_won():
+            self.hint = None
+
+            return None
+
+        try:
+            self.hint = self._solver_factory(self.game).next_hint()
+        except NoSolutionError:
+            self.hint = None
+
+            return None
+
+        if self.hint is None:
+            return None
+
+        self.selected = self.hint.coordinate
+
+        return self.hint
+
+    def apply_hint(self) -> bool:
+        """Applies exactly one hint, useful for demonstrating the solver step by step"""
+
+        hint = self.request_hint()
+        if hint is None:
+            return False
+
+        operations = {
+            "remove" : self.game.remove_cell,
+            "mark"   : self.game.mark_cell  ,
+        }
+
+        changed = operations[hint.action](hint.row, hint.column)
+
+        self.hint = None
+        if changed:
+            self.move_count     += 1
+            self.csp_step_count += 1
+
+        return changed
