@@ -348,6 +348,42 @@ class NumberSumsGame:
 
         return tuple(self._history)
 
+    def is_removed(self, row: int, column: int) -> bool:
+        """Indicates if the cell is removed"""
+
+        self._validate_coordinate(row, column)
+
+        return self._decisions.get((row, column)) == 0
+
+    def is_marked(self, row: int, column: int) -> bool:
+        """Indicates if the cell is marked"""
+
+        self._validate_coordinate(row, column)
+
+        return self._decisions.get((row, column)) == 1
+
+    def _ensure_consistent_decision(
+        self,
+        coordinate : Coordinate   ,
+        decision   : DecisionValue,
+    ) -> None:
+        """Validates a new assignment without changing the state or history"""
+
+        assumptions = dict(self._decisions)
+
+        assumptions[coordinate] = decision
+        if NumberSumsCSPSolver.from_game(self).is_consistent(assumptions):
+            return
+
+        action : Literal["remove", "mark"] = "remove" if decision == 0 else "mark"
+        reason                             = (
+            "The removal eliminates all compatible solutions"
+            if   decision == 0
+            else "The marking eliminates all compatible solutions"
+        )
+
+        raise InvalidMoveError(action, coordinate, reason)
+
     def _validate_coordinate(self, row: object, column: object) -> None:
         if not self._is_int(row) or not self._is_int(column):
             raise TypeError("Row and column must be integers.")
