@@ -468,6 +468,99 @@ class NumberSumsCSPSolver:
 
         return tuple(sorted(range(len(self._constraints)), key=key))
 
+    def _propagate(
+        self,
+        domains            : Domains      ,
+        constraint_indices : Iterable[int],
+
+        trail : list[tuple[Coordinate, frozenset[int]]]       ,
+        trace : list[CSPStep                          ] | None,
+        depth : int          ,
+        stats : _MutableStats,
+    ) -> bool:
+        queue   = deque(dict.fromkeys(constraint_indices))
+        pending = set  (queue)
+
+        while queue:
+            constraint_index = queue.popleft()
+
+            pending.remove(constraint_index)
+
+            constraint       = self._constraints     [constraint_index   ]
+            compatible_masks = self._compatible_masks(constraint, domains)
+
+            stats.propagations += 1
+            if not compatible_masks:
+                self._record(
+                    trace          ,
+                    "contradiction",
+
+                    depth,
+                    None ,
+                    None ,
+                    ()   ,
+
+                    f"{constraint.name} does not have a compatible assignment "
+                    f"with the target {constraint.target}.",
+                )
+
+                return False
+
+            for position, variable in enumerate(constraint.variables):
+                supported = {
+                    (mask >> position) & 1
+                    for mask in compatible_masks
+                }
+
+                old_domain = frozenset              (domains[variable])
+                new_domain = old_domain.intersection(supported        )
+
+                if not new_domain:
+                    self._record(
+                        trace          ,
+                        "contradiction",
+
+                        depth   ,
+                        variable,
+                        None    ,
+
+                        tuple(sorted(old_domain)),
+
+                        f"{constraint.name} emptied the domain of the cell.",
+                    )
+
+                    return False
+
+                if new_domain == old_domain:
+                    continue
+
+                trail.append((variable, old_domain))
+
+                domains[variable] = set(new_domain)
+
+                removed_values = tuple(sorted(old_domain - new_domain))
+                value          = next (iter(new_domain)) if len(new_domain) == 1 else None
+
+                self._record(
+                    trace        ,
+                    "propagation",
+
+                    depth         ,
+                    variable      ,
+                    value         ,
+                    removed_values,
+
+                    f"{constraint.name} removed unsupported values "
+                    f"for the target {constraint.target}.",
+                )
+
+                for affected in self._constraints_by_variable[variable]:
+                    if affected not in pending:
+                        queue  .append(affected)
+                        pending.add   (affected)
+
+        return True
+
     def _select_unassigned_variable(self, domains: Domains) -> Coordinate:
         available = [
             variable
