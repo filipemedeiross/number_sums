@@ -132,6 +132,21 @@ class NumberSumsPygameApp:
         self._finished_at: int | None = None
 
     @staticmethod
+    def _make_font(size: int, *, bold: bool = False) -> Any:
+        """Uses the font bundled with Pygame, without relying on system fonts."""
+
+        font = pygame.font.Font(None, size)
+        font.set_bold(bold)
+
+        return font
+
+    @staticmethod
+    def _sum_text(target: int, current: int) -> str:
+        """Formats the target first and the reserved sum afterward."""
+
+        return f"{target}/{current}"
+
+    @staticmethod
     def _require_pygame() -> None:
         if pygame is None:
             raise PygameUnavailableError(
