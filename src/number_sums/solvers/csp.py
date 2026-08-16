@@ -257,6 +257,45 @@ class NumberSumsCSPSolver:
 
         return bool(self.find_solutions(limit=1, assumptions=assumptions))
 
+    def _execution_constraint_order(
+        self,
+        domains     : Domains           ,
+        assumptions : Assumptions | None,
+    ) -> tuple[int, ...]:
+        """Orders the queue by current constraint pressure, not by board position"""
+
+        chronology = {
+            variable : position
+            for position, variable in enumerate((assumptions or {}).keys())
+        }
+
+        def key(index: int) -> tuple[int, int, int, int, int]:
+            constraint = self._constraints[index]
+            touched    = [
+                chronology[variable]
+                for variable in constraint.variables
+                if  variable in chronology
+            ]
+
+            compatible_count = len(self._compatible_masks(constraint, domains))
+
+            unresolved = sum(
+                len(domains[variable]) > 1
+                for variable in constraint.variables
+            )
+
+            return (
+                0 if touched else 1      ,
+                -max(touched, default=-1),
+
+                compatible_count,
+                unresolved      ,
+
+                -max(constraint.weights),
+            )
+
+        return tuple(sorted(range(len(self._constraints)), key=key))
+
     def _compatible_masks(
         self,
         constraint : SumConstraint,
