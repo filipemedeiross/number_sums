@@ -1,9 +1,7 @@
-# Number Sums — CSP Search
+# NUMBER SUMS
 
-A Python library, CSP solver, and Pygame application for generating and solving
-**Number Sums** (also known as **Sumplete**) boards.
-
-The goal is to remove cells until the remaining numbers in every row and column
+A python library, CSP solver, and pygame application for generating and solving
+**Number Sums** (also known as **Sumplete**) boards. The goal is to remove cells until the remaining numbers in every row and column
 add up to their respective targets.
 
 <p align="center">
@@ -16,18 +14,14 @@ add up to their respective targets.
 
 <p align="center"><em>The default 8 × 8 Pygame interface.</em></p>
 
-The visual direction and documentation structure are inspired by
-[solving_sudoku](https://github.com/filipemedeiross/solving_sudoku), adapted
-for weighted-sum constraints.
-
 ## Features
 
-- Reproducible random boards from `2 × 2` to `8 × 8`.
-- Unique solutions by default.
-- Remove, restore, mark, unmark, reset, and undo operations.
-- Every move is checked against the remaining compatible solutions.
-- CSP solving with GAC propagation, MRV/LCV ordering, and backtracking.
-- Hints, solution enumeration, search traces, and statistics.
+- Reproducible random boards from `2 × 2` to `8 × 8`;
+- Unique solutions by default;
+- Remove, restore, mark, unmark, reset, and undo operations;
+- Every move is checked against the remaining compatible solutions;
+- CSP solving with GAC propagation, MRV/LCV ordering, and backtracking;
+- Hints, solution enumeration, search traces, and statistics;
 - Mouse-driven Pygame interface and an interactive notebook.
 
 ## Installation roadmap
@@ -117,9 +111,7 @@ python main.py
 | Close the window | Exit |
 
 The interface is mouse-only. A hint is highlighted but not applied
-automatically.
-
-Each row and column indicator pairs its target with the sum of cells explicitly
+automatically. Each row and column indicator pairs its target with the sum of cells explicitly
 marked to remain. An incompatible move is rejected and increases the
 incorrect-move counter.
 
@@ -159,25 +151,21 @@ $$
 Each row and column becomes a weighted-sum constraint:
 
 $$
-\sum_{c=0}^{n-1} a_{r,c}x_{r,c} = row\_target_r
+\sum_{c=0}^{n-1} a_{r,c}x_{r,c} = row\_r
 $$
 
 $$
-\sum_{r=0}^{n-1} a_{r,c}x_{r,c} = column\_target_c
+\sum_{r=0}^{n-1} a_{r,c}x_{r,c} = column\_c
 $$
 
 The model therefore contains `n²` variables and `2n` constraints.
 
 The solver works in four stages:
 
-1. It precomputes the keep/remove masks that satisfy each row or column.
-2. Generalized Arc Consistency removes values with no supporting mask.
-3. If propagation is not enough, MRV/LCV guide a backtracking search.
+1. It precomputes the keep/remove masks that satisfy each row or column;
+2. Generalized Arc Consistency removes values with no supporting mask;
+3. If propagation is not enough, MRV/LCV guide a backtracking search;
 4. A reversible trail restores domains when a branch fails.
-
-`solve_with_trace()` can record propagation, decisions, contradictions,
-backtracks, solutions, and search counters. `next_hint()` uses the current game
-decisions and returns one compatible remove-or-keep suggestion.
 
 Boards are limited to `8 × 8`. Each constraint has at most `2ⁿ` masks, while
 the complete search remains exponential in the worst case.
@@ -196,16 +184,6 @@ number_sums/
 ├── tests/
 ├── pyproject.toml
 └── requirements.txt
-```
-
-## Notebook
-
-[`notebooks/1_game_logic.ipynb`](notebooks/1_game_logic.ipynb) demonstrates
-board generation, solving, and a text-based game.
-
-```bash
-python -m pip install -e ".[dev]"
-jupyter lab notebooks/1_game_logic.ipynb
 ```
 
 ## Tests
@@ -232,16 +210,9 @@ python -m unittest discover -s tests -v
 
 ## References
 
-- [filipemedeiross/solving_sudoku](https://github.com/filipemedeiross/solving_sudoku)
-- Stuart Russell and Peter Norvig,
-  [*Artificial Intelligence: A Modern Approach*](https://aima.cs.berkeley.edu/)
-- David Poole and Alan Mackworth,
-  [*Generalized Arc Consistency*](https://www.cs.ubc.ca/~poole/aibook/3e/html/ArtInt3e.Ch4.S3.html)
-- Alan K. Mackworth,
-  [“Consistency in Networks of Relations”](https://www.cs.ubc.ca/~mack/Publications/b2hd-AI77.html),
-  *Artificial Intelligence*, 8(1), 1977
-- [Pygame documentation](https://www.pygame.org/docs/)
-- [pip local project installation](https://pip.pypa.io/en/stable/topics/local-project-installs/)
+Stuart Russell and Peter Norvig. **Artificial Intelligence: A Modern Approach**. 3rd ed., Pearson, 2009.
+
+Pygame: <https://www.pygame.org/docs/>
 
 ## License
 
