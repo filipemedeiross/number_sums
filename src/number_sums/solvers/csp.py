@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from typing      import Iterable, Literal, Mapping, Sequence
+from typing      import TYPE_CHECKING, Iterable, Literal, Mapping, Sequence
 
-from ..game  import NumberSumsGame
 from ..utils import Hint, NoSolutionError
+
+
+if TYPE_CHECKING:
+    from ..game import NumberSumsGame
 
 
 Coordinate  = tuple  [int, int]
