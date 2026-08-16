@@ -215,6 +215,31 @@ class NumberSumsPygameApp:
 
         pygame.display.flip()
 
+    def _perform_action(self, action: str) -> None:
+        if action == "new":
+            self.controller.new_game()
+
+            self.layout = BoardLayout(
+                size=self.controller.game.size
+            )
+
+            self._restart_timer()
+        elif action == "reset":
+            self.controller.reset()
+
+            self._restart_timer()
+        elif action == "hint":
+            self.controller.request_hint()
+        else:
+            raise ValueError(f"Unknown action: {action}")
+
+    def _draw_header(self) -> None:
+        title      = self.font_title   .render("NUMBER SUMS"                             , True, self.COLOR_TEXT  )
+        mouse_help = self.font_subtitle.render("Left click: remove  ·  Right click: mark", True, self.COLOR_SELECT)
+
+        self.screen.blit(title     , title     .get_rect(center=(self.WIDTH // 2, 35)))
+        self.screen.blit(mouse_help, mouse_help.get_rect(center=(self.WIDTH // 2, 67)))
+
     def _elapsed_seconds(self) -> int:
         now = pygame.time.get_ticks()
 
