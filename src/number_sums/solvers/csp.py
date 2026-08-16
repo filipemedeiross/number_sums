@@ -257,6 +257,94 @@ class NumberSumsCSPSolver:
 
         return bool(self.find_solutions(limit=1, assumptions=assumptions))
 
+    def next_step(
+        self,
+        *   ,
+        assumptions : Assumptions | None = None,
+    ) -> CSPStep | None:
+        """
+        Executes only up to the next actionable step of the CSP.
+
+        The call does not build or store a complete solution. First, it visits
+        the constraints in the order chosen by the GAC execution and stops at the
+        first domain reduction. If no propagation produces a step, MRV/LCV chooses
+        a single decision and performs only the necessary look-ahead to ensure that
+        the branch still admits a solution.
+
+        A new call always starts over using the current ``assumptions``. Thus, a
+        user move naturally invalidates the previous execution.
+        """
+
+        domains             = self._initial_domains           (assumptions)
+        ordered_constraints = self._execution_constraint_order(domains, assumptions)
+
+        for constraint_index in ordered_constraints:
+            constraint       = self._constraints     [constraint_index   ]
+            compatible_masks = self._compatible_masks(constraint, domains)
+
+            if not compatible_masks:
+                raise NoSolutionError(
+                    f"{constraint.name} has no assignment compatible with target {constraint.target}."
+                )
+
+            for position in range(len(constraint.variables)):
+                variable  = constraint.variables[position]
+                supported = {
+                    (mask >> position) & 1
+                    for mask in compatible_masks
+                }
+
+                old_domain = frozenset              (domains[variable])
+                new_domain = old_domain.intersection(supported        )
+
+                if not new_domain:
+                    raise NoSolutionError(
+                        f"{constraint.name} has no assignment compatible with target {constraint.target}."
+                    )
+                if new_domain == old_domain:
+                    continue
+
+                value = next(iter(new_domain)) if len(new_domain) == 1 else None
+
+                return CSPStep(
+                    "propagation",
+                    0            ,
+
+                    variable,
+                    value   ,
+
+                    tuple(sorted(old_domain - new_domain))                                            ,
+                    f"{constraint.name} has no assignment compatible with target {constraint.target}.",
+                )
+
+        if all(len(domain) == 1 for domain in domains.values()):
+            if self._is_complete_solution(domains):
+                return None
+
+            raise NoSolutionError("The current decisions do not satisfy the targets.")
+
+        variable         = self._select_unassigned_variable(domains)
+        base_assumptions = dict(assumptions or {})
+
+        for value in self._order_domain_values(variable, domains):
+            candidate = {**base_assumptions, variable: value}
+
+            if self.find_solutions(limit=1, assumptions=candidate):
+                return CSPStep(
+                    "decision",
+                    0         ,
+
+                    variable,
+                    value   ,
+
+                    tuple(sorted(domains[variable] - {value})),
+
+                    f"MRV selected R{variable[0] + 1} C{variable[1] + 1}; "
+                    f"LCV chose {value} in a branch that still admits a solution.",
+                )
+
+        raise NoSolutionError("No branch of the next decision admits a solution.")
+
     def _execution_constraint_order(
         self,
         domains     : Domains           ,
