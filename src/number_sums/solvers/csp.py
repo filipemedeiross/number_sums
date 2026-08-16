@@ -208,6 +208,50 @@ class NumberSumsCSPSolver:
             for variable, domain in domains.items()
         }
 
+    def find_solutions(
+        self,
+        limit       : int         | None = None,
+        *,
+        assumptions : Assumptions | None = None,
+    ) -> list[frozenset[Coordinate]]:
+        """Enumerates solutions as sets of coordinates to remove"""
+
+        self._validate_limit(limit)
+
+        solutions, _, _ = self._run(
+            limit, assumptions, capture_trace=False
+        )
+
+        return solutions
+
+    def solve(
+        self,
+        *   ,
+        assumptions : Assumptions | None = None,
+    ) -> frozenset[Coordinate]:
+        """Returns a CSP solution without modifying the game"""
+
+        solutions = self.find_solutions(limit=1, assumptions=assumptions)
+
+        if not solutions:
+            raise NoSolutionError("The board has no solution for the given state.")
+
+        return solutions[0]
+
+    def solve_with_trace(
+        self,
+        *   ,
+        assumptions : Assumptions | None = None,
+    ) -> CSPResult:
+        """Returns a solution and all propagation and search steps"""
+
+        solutions, steps, stats = self._run(1, assumptions, capture_trace=True)
+
+        if not solutions:
+            raise NoSolutionError("The board has no solution for the given state.")
+
+        return CSPResult(solutions[0], tuple(steps), stats.freeze())
+
     def _initial_domains(self, assumptions: Assumptions | None) -> Domains:
         domains = {
             variable : {self.REMOVE, self.KEEP}
