@@ -384,6 +384,65 @@ class NumberSumsCSPSolver:
 
         return tuple(sorted(range(len(self._constraints)), key=key))
 
+    def _select_unassigned_variable(self, domains: Domains) -> Coordinate:
+        available = [
+            variable
+            for variable in self._variables
+            if  len(domains[variable]) > 1
+        ]
+
+        def constraint_pressure(variable: Coordinate) -> int:
+            return sum(
+                len(
+                    self._compatible_masks(
+                        self._constraints[index], domains
+                    )
+                )
+                for index in self._constraints_by_variable[variable]
+            )
+
+        return min(
+            available,
+
+            key=lambda variable: (
+                len                (domains[variable]),
+                constraint_pressure(variable         ),
+
+                -self._board[variable[0]][variable[1]],
+                -variable[0],
+                -variable[1],
+            ),
+        )
+
+    def _order_domain_values(
+        self,
+        variable : Coordinate,
+        domains  : Domains   ,
+    ) -> tuple[DomainValue, ...]:
+        def support_score(value: int) -> int:
+            return sum(
+                len(
+                    self._compatible_masks(
+                        self._constraints[index],
+                        domains                 ,
+
+                        override=(variable, value),
+                    )
+                )
+                for index in self._constraints_by_variable[variable]
+            )
+
+        return tuple(
+            sorted(
+                domains[variable],
+
+                key=lambda value: (
+                    -support_score(value),
+                    value                ,
+                ),
+            )
+        )
+
     def _compatible_masks(
         self,
         constraint : SumConstraint,
