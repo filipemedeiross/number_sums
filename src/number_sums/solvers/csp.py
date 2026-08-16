@@ -468,6 +468,108 @@ class NumberSumsCSPSolver:
 
         return tuple(sorted(range(len(self._constraints)), key=key))
 
+    def _backtrack(
+        self,
+        domains   : Domains,
+        trail     : list[tuple[Coordinate, frozenset[int]]],
+        solutions : list[frozenset[Coordinate]            ],
+
+        limit : int           | None,
+        trace : list[CSPStep] | None,
+        depth : int          ,
+        stats : _MutableStats,
+    ) -> None:
+        if limit is not None and len(solutions) >= limit:
+            return
+
+        stats.nodes += 1
+        if all(len(domain) == 1 for domain in domains.values()):
+            if self._is_complete_solution(domains):
+                removed = frozenset(
+                    variable
+                    for variable, domain in domains.items()
+                    if  next(iter(domain)) == self.REMOVE
+                )
+
+                solutions.append(removed)
+
+                self._record(
+                    trace     ,
+                    "solution",
+
+                    depth,
+                    None ,
+                    None ,
+                    ()   ,
+
+                    "All variables satisfy the goals.",
+                )
+
+            return
+
+        variable = self._select_unassigned_variable(domains)
+
+        for value in self._order_domain_values(variable, domains):
+            if limit is not None and len(solutions) >= limit:
+                return
+
+            marker     = len      (trail)
+            old_domain = frozenset(domains[variable])
+
+            trail.append((variable, old_domain))
+
+            domains[variable] = {value}
+
+            self._record(
+                trace     ,
+                "decision",
+
+                depth   ,
+                variable,
+                value   ,
+
+                tuple(sorted(old_domain - {value}))                                           ,
+                f"MRV selected cell L{variable[0] + 1} C{variable[1] + 1}; LCV tried {value}.",
+            )
+
+            solutions_before = len(solutions)
+
+            feasible = self._propagate(
+                domains                                ,
+                self._constraints_by_variable[variable],
+
+                trail    ,
+                trace    ,
+                depth + 1,
+                stats    ,
+            )
+            if feasible:
+                self._backtrack(
+                    domains  ,
+                    trail    ,
+                    solutions,
+                    limit    ,
+                    trace    ,
+                    depth + 1,
+                    stats    ,
+                )
+
+            self._restore(domains, trail, marker)
+
+            if len(solutions) == solutions_before:
+                stats.backtracks += 1
+
+                self._record(
+                    trace      ,
+                    "backtrack",
+
+                    depth   ,
+                    variable,
+                    value   ,
+                    ()      ,
+                    "The branch did not lead to a solution; the domains were restored.",
+                )
+
     def _propagate(
         self,
         domains            : Domains      ,
