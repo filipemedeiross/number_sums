@@ -28,9 +28,9 @@ class SumConstraint:
     """Tabular constraint equivalent to a weighted sum"""
 
     name          : str
-    target        : int
     variables     : tuple[Coordinate, ...]
     weights       : tuple[int       , ...]
+    target        : int
     allowed_masks : tuple[int       , ...]
 
 
@@ -176,6 +176,62 @@ class NumberSumsCSPSolver:
             for variable in self._variables
         }
 
+    def _initial_domains(self, assumptions: Assumptions | None) -> Domains:
+        domains = {
+            variable : {self.REMOVE, self.KEEP}
+            for variable in self._variables
+        }
+
+        if assumptions is None:
+            return domains
+        if not isinstance(assumptions, Mapping):
+            raise TypeError("Assumptions must map coordinates to 0 or 1.")
+
+        for variable, value in assumptions.items():
+            self._validate_variable(variable)
+
+            if not isinstance(value, int ) \
+               or  isinstance(value, bool) \
+               or  value not in (0, 1):
+                raise ValueError("Each assumption must use 0 (remove) or 1 (keep).")
+
+            domains[variable] = {value}
+
+        return domains
+
+    def _build_constraints(self) -> tuple[SumConstraint, ...]:
+        constraints : list[SumConstraint] = []
+
+        for row in range(self.size):
+            variables = tuple(
+                (row, column)
+                for column in range(self.size)
+            )
+
+            constraints.append(
+                self._make_constraint(
+                    f"Linha {row + 1}",
+                    variables             ,
+                    self._board[row]      ,
+                    self._row_targets[row],
+                )
+            )
+
+        for column in range(self.size):
+            variables = tuple((row, column)            for row in range(self.size))
+            weights   = tuple(self._board[row][column] for row in range(self.size))
+
+            constraints.append(
+                self._make_constraint(
+                    f"Coluna {column + 1}",
+                    variables                   ,
+                    weights                     ,
+                    self._column_targets[column],
+                )
+            )
+
+        return tuple(constraints)
+
     def _validate_problem(self) -> None:
         if not self._board:
             raise ValueError("The CSP board cannot be empty.")
@@ -229,3 +285,22 @@ class NumberSumsCSPSolver:
             or  limit <= 0
         ):
             raise ValueError("Limit must be None or a positive integer.")
+
+    @staticmethod
+    def _make_constraint(
+        name      : str,
+        variables : tuple[Coordinate, ...],
+        weights   : tuple[int       , ...],
+        target    : int,
+    ) -> SumConstraint:
+        allowed_masks = tuple(
+            mask
+            for mask in range(1 << len(variables))
+            if  sum(
+                weight
+                for position, weight in enumerate(weights)
+                if  mask & (1 << position)
+            ) == target
+        )
+
+        return SumConstraint(name, variables, weights, target, allowed_masks)
