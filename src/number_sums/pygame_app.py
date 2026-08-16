@@ -131,6 +131,90 @@ class NumberSumsPygameApp:
         self._started_at              = pygame.time.get_ticks()
         self._finished_at: int | None = None
 
+    def run(self, *, max_frames: int | None = None) -> None:
+        """
+        Runs the main loop.
+
+        ``max_frames`` is intended for headless smoke tests;
+        during normal use, leave it as ``None``.
+        """
+
+        if max_frames is not None and (
+            not isinstance(max_frames, int )
+            or  isinstance(max_frames, bool)
+            or  max_frames <= 0
+        ):
+            raise ValueError("Max_frames must be None or a positive integer.")
+
+        running = True
+        frames  = 0
+        try:
+            while running:
+                for event in pygame.event.get():
+                    if not self.handle_event(event):
+                        running = False
+                        break
+
+                self.draw()
+
+                frames += 1
+                if max_frames is not None and frames >= max_frames:
+                    break
+
+                self.clock.tick(self.FPS)
+        finally:
+            pygame.display.quit()
+            pygame.font   .quit()
+
+    def handle_event(self, event: Any) -> bool:
+        """Processes an event and returns whether the application should continue."""
+
+        if event.type == pygame.QUIT:
+            return False
+
+        if self.controller.won:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for action in ("new", "reset"):
+                    if self.buttons[action].collidepoint(event.pos):
+                        self._perform_action(action)
+                        break
+
+            return True
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button in (1, 3):
+            if event.button == 1:
+                for action, rect in self.buttons.items():
+                    if rect.collidepoint(event.pos):
+                        self._perform_action(action)
+                        return True
+
+            coordinate = self.layout.cell_at(event.pos)
+
+            if coordinate is not None:
+                if event.button == 1:
+                    self.controller.toggle_cell(*coordinate)
+                else:
+                    self.controller.toggle_mark(*coordinate)
+
+            return True
+
+        return True
+
+    def draw(self) -> None:
+        """Draws a complete frame."""
+
+        self.screen.blit(self.background, (0, 0))
+
+        self._draw_header ()
+        self._draw_board  ()
+        self._draw_toolbar()
+        self._draw_footer ()
+
+        if self.controller.won:
+            self._draw_win_overlay()
+
+        pygame.display.flip()
+
     def _elapsed_seconds(self) -> int:
         now = pygame.time.get_ticks()
 
