@@ -257,6 +257,44 @@ class NumberSumsCSPSolver:
 
         return bool(self.find_solutions(limit=1, assumptions=assumptions))
 
+    def _compatible_masks(
+        self,
+        constraint : SumConstraint,
+        domains    : Domains      ,
+        *,
+        override : tuple[Coordinate, int] | None = None,
+    ) -> tuple[int, ...]:
+        override_variable, override_value = override or (None, None)
+
+        compatible : list[int] = []
+        for mask in constraint.allowed_masks:
+            for position, variable in enumerate(constraint.variables):
+                value  = (mask >> position) & 1
+                domain = (
+                    {override_value}
+                    if   variable == override_variable
+                    else domains[variable]
+                )
+
+                if value not in domain:
+                    break
+            else:
+                compatible.append(mask)
+
+        return tuple(compatible)
+
+    def _is_complete_solution(self, domains: Domains) -> bool:
+        return all(
+            any(
+                all(
+                    next(iter(domains[variable])) == ((mask >> position) & 1)
+                    for position, variable in enumerate(constraint.variables)
+                )
+                for mask in constraint.allowed_masks
+            )
+            for constraint in self._constraints
+        )
+
     def _initial_domains(self, assumptions: Assumptions | None) -> Domains:
         domains = {
             variable : {self.REMOVE, self.KEEP}
