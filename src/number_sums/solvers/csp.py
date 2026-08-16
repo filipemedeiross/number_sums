@@ -176,6 +176,38 @@ class NumberSumsCSPSolver:
             for variable in self._variables
         }
 
+    def infer(
+        self,
+        assumptions : Assumptions | None = None,
+    ) -> Mapping[Coordinate, frozenset[DomainValue]]:
+        """
+        Applies only GAC and returns the resulting domains.
+
+        ``assumptions`` may fix cells to ``0`` (remove) or ``1`` (keep).
+        A contradiction raises :class:`NoSolutionError`.
+        """
+
+        domains = self._initial_domains(assumptions)
+
+        trail : list[tuple[Coordinate, frozenset[int]]] = []
+        stats                                           = _MutableStats()
+
+        if not self._propagate(
+            domains                      ,
+            range(len(self._constraints)),
+
+            trail,
+            None ,
+            0    ,
+            stats,
+        ):
+            raise NoSolutionError("The provided assignments make the CSP inconsistent.")
+
+        return {
+            variable : frozenset(domain)
+            for variable, domain in domains.items()
+        }
+
     def _initial_domains(self, assumptions: Assumptions | None) -> Domains:
         domains = {
             variable : {self.REMOVE, self.KEEP}
