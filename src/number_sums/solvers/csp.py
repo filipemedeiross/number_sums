@@ -345,6 +345,90 @@ class NumberSumsCSPSolver:
 
         raise NoSolutionError("No branch of the next decision admits a solution.")
 
+    def next_hint(
+        self,
+        game : NumberSumsGame | None = None,
+    ) -> Hint | None:
+        """
+        Computes the next move consistent with the player's current state.
+
+        Removed cells are fixed to ``0`` and KEEP-marked cells to ``1``.
+        The call runs only until the first actionable step and does not scan
+        the board by coordinates. The game must preserve the consistency of its
+        decisions; if the CSP nevertheless finds a contradiction, the
+        :class:`NoSolutionError` exception is propagated to the caller.
+        """
+
+        current_game = game or self._game
+
+        if current_game is None:
+            raise ValueError("Provide a game to next_hint() or use from_game().")
+        if (
+            current_game.board          != self._board          or
+            current_game.row_targets    != self._row_targets    or
+            current_game.column_targets != self._column_targets
+        ):
+            raise ValueError("The provided game does not correspond to this solver's problem.")
+
+        if current_game.is_won():
+            return None
+
+        decisions   = current_game.decisions
+        assumptions = dict(decisions)
+
+        step = self.next_step(assumptions=assumptions)
+
+        if step is None:
+            return None
+        if step.cell is None or step.value not in (self.REMOVE, self.KEEP):
+            raise NoSolutionError("The next step of the CSP is not actionable on the board.")
+
+        row, column = step.cell
+
+        action : Literal["remove", "mark"    ] = "remove" if step.value == self.REMOVE   else "mark"
+        kind   : Literal["forced", "decision"] = "forced" if step.kind  == "propagation" else "decision"
+
+        verb = "removal" if action == "remove" else "retention"
+
+        return Hint(
+            row   ,
+            column,
+            self._board[row][column],
+
+            action,
+            kind  ,
+            f"Step {step.kind} of CSP execution: confirm the {verb}. {step.reason}",
+        )
+
+    def _run(
+        self,
+        limit       : int         | None,
+        assumptions : Assumptions | None,
+        *,
+        capture_trace : bool,
+    ) -> tuple[list[frozenset[Coordinate]], list[CSPStep], _MutableStats]:
+        domains = self._initial_domains(assumptions)
+
+        trail     : list[tuple[Coordinate, frozenset[int]]] = []
+        steps     : list[CSPStep                          ] = []
+        solutions : list[frozenset[Coordinate]            ] = []
+
+        trace = steps if capture_trace else None
+        stats = _MutableStats()
+
+        if self._propagate(
+            domains                      ,
+            range(len(self._constraints)),
+
+            trail,
+            trace,
+            0    ,
+            stats,
+        ):
+            self._backtrack(domains, trail, solutions, limit, trace, 0, stats)
+
+        return solutions, steps, stats
+
     def _execution_constraint_order(
         self,
         domains     : Domains           ,
