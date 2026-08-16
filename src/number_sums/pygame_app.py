@@ -240,6 +240,95 @@ class NumberSumsPygameApp:
         self.screen.blit(title     , title     .get_rect(center=(self.WIDTH // 2, 35)))
         self.screen.blit(mouse_help, mouse_help.get_rect(center=(self.WIDTH // 2, 67)))
 
+    def _draw_toolbar(self) -> None:
+        labels = {
+            "new"   : "NOVO" ,
+            "reset" : "RESET",
+            "hint"  : "DICA" ,
+        }
+
+        mouse = pygame.mouse.get_pos()
+
+        for action, rect in self.buttons.items():
+            hovered = rect.collidepoint(mouse)
+            color   = (151, 31, 119) if hovered else (113, 24, 104)
+
+            label   = self.font_button.render(labels[action], True, self.COLOR_TEXT)
+
+            pygame.draw.rect(self.screen, color          , rect,    border_radius=9)
+            pygame.draw.rect(self.screen, self.COLOR_LINE, rect, 2, border_radius=9)
+            self.screen.blit(label, label.get_rect(center=rect.center))
+
+    def _draw_board(self) -> None:
+        game = self.controller.game
+
+        row_sums    = game.reserved_row_sums   ()
+        column_sums = game.reserved_column_sums()
+
+        panel = pygame.Rect(
+            self.layout.left  - 8 ,
+            self.layout.top   - 8 ,
+            self.layout.width + 16,
+            self.layout.width + 16,
+        )
+
+        pygame.draw.rect(self.screen, self.COLOR_LINE , panel   , border_radius=14)
+        pygame.draw.rect(self.screen, self.COLOR_PANEL, panel, 4, border_radius=14)
+
+        for row in range(game.size):
+            for column in range(game.size):
+                rect = pygame.Rect(
+                    self.layout.cell_box(row, column)
+                ).inflate(-4, -4)
+
+                self.screen.blit(
+                    self._make_cell_surface(row, column), rect.topleft
+                )
+
+                coordinate = (row, column)
+                if self.controller.hint and coordinate == self.controller.hint.coordinate:
+                    hint_color = {
+                        "remove" : self.COLOR_HINT  ,
+                        "mark"   : self.COLOR_MARKED,
+                    }[self.controller.hint.action]
+
+                    pygame.draw.rect(self.screen, hint_color, rect, 5, border_radius=7)
+
+        target_label = self.font_subtitle.render(
+            "META/SOMA", True, self.COLOR_SELECT
+        )
+        self.screen.blit(
+            target_label,
+            target_label.get_rect(
+                center=(
+                    self.layout.right + 58,
+                    self.layout.top   - 22,
+                )
+            ),
+        )
+
+        for row, (current, target) in enumerate(zip(row_sums, game.row_targets)):
+            text = self.font_target.render(
+                self._sum_text(target, current), True, self.COLOR_TEXT,
+            )
+            center = (
+                self.layout.right + 58,
+                self.layout.top   + row * self.layout.cell_size + self.layout.cell_size // 2,
+            )
+
+            self.screen.blit(text, text.get_rect(center=center))
+
+        for column, (current, target) in enumerate(zip(column_sums, game.column_targets)):
+            text = self.font_target.render(
+                self._sum_text(target, current), True, self.COLOR_TEXT,
+            )
+            center = (
+                self.layout.left + column * self.layout.cell_size + self.layout.cell_size // 2,
+                self.layout.top  - 22,
+            )
+
+            self.screen.blit(text, text.get_rect(center=center))
+
     def _elapsed_seconds(self) -> int:
         now = pygame.time.get_ticks()
 
