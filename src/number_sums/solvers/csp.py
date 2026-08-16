@@ -252,6 +252,11 @@ class NumberSumsCSPSolver:
 
         return CSPResult(solutions[0], tuple(steps), stats.freeze())
 
+    def is_consistent(self, assumptions: Assumptions | None = None) -> bool:
+        """Returns whether there exists at least one solution for the given decisions"""
+
+        return bool(self.find_solutions(limit=1, assumptions=assumptions))
+
     def _initial_domains(self, assumptions: Assumptions | None) -> Domains:
         domains = {
             variable : {self.REMOVE, self.KEEP}
