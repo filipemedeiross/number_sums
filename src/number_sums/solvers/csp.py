@@ -175,3 +175,57 @@ class NumberSumsCSPSolver:
             variable : frozenset((self.REMOVE, self.KEEP))
             for variable in self._variables
         }
+
+    def _validate_problem(self) -> None:
+        if not self._board:
+            raise ValueError("The CSP board cannot be empty.")
+
+        size = len(self._board)
+        if size > self.MAX_SIZE:
+            raise ValueError(f"The CSP supports boards of up to {self.MAX_SIZE}×{self.MAX_SIZE}.")
+
+        if any(len(row) != size for row in self._board):
+            raise ValueError("The CSP board must be square.")
+        if len(self._row_targets) != size or len(self._column_targets) != size:
+            raise ValueError("The CSP requires a target for each row and column.")
+
+        if any(
+            not isinstance(value, int )
+            or  isinstance(value, bool)
+            or  value <= 0
+            for row   in self._board
+            for value in row
+        ):
+            raise ValueError("The CSP cells must be positive integers.")
+        if any(
+            not isinstance(target, int )
+            or  isinstance(target, bool)
+            or  target < 0
+            for target in (*self._row_targets, *self._column_targets)
+        ):
+            raise ValueError("The CSP targets must be non-negative integers.")
+
+    def _validate_variable(self, variable: object) -> None:
+        if (
+            not isinstance(variable, tuple)
+            or  len       (variable) != 2
+            or  any(
+                not isinstance(index, int )
+                or  isinstance(index, bool)
+                for index in variable
+            )
+        ):
+            raise ValueError("Each variable must be a coordinate (row, column).")
+
+        row, column = variable
+        if not 0 <= row < self.size or not 0 <= column < self.size:
+            raise ValueError("A coordinate in the assumptions is outside the board.")
+
+    @staticmethod
+    def _validate_limit(limit: int | None) -> None:
+        if limit is not None and (
+            not isinstance(limit, int )
+            or  isinstance(limit, bool)
+            or  limit <= 0
+        ):
+            raise ValueError("Limit must be None or a positive integer.")
