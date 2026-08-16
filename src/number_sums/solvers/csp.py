@@ -380,3 +380,37 @@ class NumberSumsCSPSolver:
         )
 
         return SumConstraint(name, variables, weights, target, allowed_masks)
+
+    @staticmethod
+    def _restore(
+        domains : Domains                                ,
+        trail   : list[tuple[Coordinate, frozenset[int]]],
+        marker  : int,
+    ) -> None:
+        while len(trail) > marker:
+            variable, old_domain = trail.pop()
+
+            domains[variable] = set(old_domain)
+
+    @staticmethod
+    def _record(
+        trace : list[CSPStep] | None,
+
+        kind           : StepKind,
+        depth          : int     ,
+        cell           : Coordinate  | None,
+        value          : DomainValue | None,
+        removed_values : tuple[DomainValue, ...],
+        reason         : str                    ,
+    ) -> None:
+        if trace is not None:
+            trace.append(
+                CSPStep(
+                    kind          ,
+                    depth         ,
+                    cell          ,
+                    value         ,
+                    removed_values,
+                    reason        ,
+                )
+            )
