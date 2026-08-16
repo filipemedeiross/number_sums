@@ -329,6 +329,103 @@ class NumberSumsPygameApp:
 
             self.screen.blit(text, text.get_rect(center=center))
 
+    def _draw_footer(self) -> None:
+        elapsed = self._elapsed_seconds()
+
+        metrics = (
+            ("TEMPO", f"{elapsed // 60:02d}:{elapsed % 60:02d}", self.COLOR_TEXT),
+            (
+                "MOVIMENTOS ERRADOS"                     ,
+                str(self.controller.forbidden_move_count),
+                self.COLOR_RED
+                if   self.controller.forbidden_move_count
+                else self.COLOR_TEXT,
+            ),
+        )
+
+        cards = self._footer_cards()
+        for card, (label, value, value_color) in zip(cards, metrics):
+            overlay    = pygame .Surface (card.size, pygame.SRCALPHA)
+            local_rect = overlay.get_rect()
+
+            pygame.draw.rect(overlay, (42, 22, 75, 205), local_rect,    border_radius=12)
+            pygame.draw.rect(overlay, self.COLOR_LINE  , local_rect, 2, border_radius=12)
+
+            self.screen.blit(overlay, card.topleft)
+
+            label_surface = self.font_subtitle.render(label, True, self.COLOR_SELECT)
+            value_surface = self.font_metric  .render(value, True, value_color      )
+
+            self.screen.blit(label_surface, label_surface.get_rect(center=(card.centerx, card.top + 16)))
+            self.screen.blit(value_surface, value_surface.get_rect(center=(card.centerx, card.top + 42)))
+
+    def _make_cell_surface(self, row: int, column: int) -> Any:
+        game = self.controller.game
+        side = self.layout.cell_size - 4
+
+        surface = pygame .Surface ((side, side), pygame.SRCALPHA)
+        rect    = surface.get_rect()
+        color   = self.COLOR_TILE if (row + column) % 2 == 0 else self.COLOR_TILE_ALT
+
+        pygame.draw.rect(surface, color, rect, border_radius=7)
+
+        value = self.font_cell.render(
+            str(game.board[row][column]), True, self.COLOR_TEXT
+        )
+        surface.blit(value, value.get_rect(center=rect.center))
+
+        if   game.is_marked (row, column):
+            pygame.draw.rect(
+                surface, self.COLOR_MARKED, rect, 4, border_radius=7
+            )
+        elif game.is_removed(row, column):
+            surface.set_alpha(self.REMOVED_ALPHA)
+
+        return surface
+
+    def _draw_win_overlay(self) -> None:
+        overlay = pygame.Surface((self.WIDTH, self.HEIGHT), pygame.SRCALPHA)
+
+        overlay    .fill((35, 12, 53, 155))
+        self.screen.blit(overlay, (0, 0)  )
+
+        box = pygame.Rect(105, 285, 430, 205)
+        pygame.draw.rect(self.screen, (107, 27, 104)  , box,    border_radius=18)
+        pygame.draw.rect(self.screen, self.COLOR_GREEN, box, 4, border_radius=18)
+
+        circle_center = (self.WIDTH // 2, box.top + 55)
+
+        pygame.draw.circle(self.screen, self.COLOR_GREEN, circle_center, 28, 4)
+        pygame.draw.line  (
+            self.screen     ,
+            self.COLOR_GREEN,
+            (circle_center[0] - 13, circle_center[1]     ),
+            (circle_center[0] -  3, circle_center[1] + 11),
+            5,
+        )
+        pygame.draw.line(
+            self.screen     ,
+            self.COLOR_GREEN,
+            (circle_center[0] - 3 , circle_center[1] + 11),
+            (circle_center[0] + 16, circle_center[1] - 13),
+            5,
+        )
+
+        title = self.font_win.render(
+            "Você venceu!", True, self.COLOR_TEXT
+        )
+        self.screen.blit(title, title.get_rect(center=(self.WIDTH // 2, box.top + 112)))
+
+        detail = self.font_status.render(
+            f"Tempo {self._elapsed_seconds() // 60:02d}:"
+            f"{self._elapsed_seconds() % 60:02d} · "
+            f"{self.controller.move_count         } movimentos · "
+            f"{self.controller.forbidden_move_count} errados"    ,
+            True             ,
+            self.COLOR_SELECT,
+        )
+        self.screen.blit(detail, detail.get_rect(center=(self.WIDTH // 2, box.top + 158)))
+
     def _elapsed_seconds(self) -> int:
         now = pygame.time.get_ticks()
 
