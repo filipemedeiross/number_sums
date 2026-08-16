@@ -131,6 +131,48 @@ class NumberSumsPygameApp:
         self._started_at              = pygame.time.get_ticks()
         self._finished_at: int | None = None
 
+    def _elapsed_seconds(self) -> int:
+        now = pygame.time.get_ticks()
+
+        if self.controller.won:
+            if self._finished_at is None:
+                self._finished_at = now
+
+            end = self._finished_at
+        else:
+            self._finished_at = None
+            end               = now
+
+        return max(0, end - self._started_at) // 1000
+
+    def _restart_timer(self) -> None:
+        self._started_at  = pygame.time.get_ticks()
+        self._finished_at = None
+
+    def _make_gradient(self) -> Any:
+        surface = pygame.Surface((self.WIDTH, self.HEIGHT))
+
+        for y in range(self.HEIGHT):
+            ratio = y / max(1, self.HEIGHT - 1)
+
+            color = tuple  (
+                round(top + (bottom - top) * ratio)
+                for top, bottom in zip(
+                    self.COLOR_TOP, self.COLOR_BOTTOM
+                )
+            )
+
+            pygame.draw.line(surface, color, (0, y), (self.WIDTH, y))
+
+        return surface
+
+    @staticmethod
+    def _footer_cards() -> tuple[Any, Any]:
+        return (
+            pygame.Rect(100, 722, 210, 60),
+            pygame.Rect(330, 722, 210, 60),
+        )
+
     @staticmethod
     def _make_font(size: int, *, bold: bool = False) -> Any:
         """Uses the font bundled with Pygame, without relying on system fonts."""
